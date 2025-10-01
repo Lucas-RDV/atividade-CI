@@ -66,7 +66,7 @@ app.get("/api/funcionarios", (req, res) => {
   });
 });
 
-module.exports = { app, db };
+module.exports = app;
 
 if (require.main === module) {
   const PORT = process.env.PORT || 3000;
