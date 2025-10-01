@@ -1,5 +1,9 @@
 const request = require("supertest");
-const app = require("../index");
+const { app, db } = require("../index");
+
+afterAll(() => {
+  db.close();
+});
 
 describe("API Funcionários", () => {
   it("Deve inserir 3 funcionários e listá-los", async () => {
@@ -10,7 +14,11 @@ describe("API Funcionários", () => {
     ];
 
     for (const f of funcionarios) {
-      const res = await request(app).post("/api/funcionarios").send(f);
+      const res = await request(app)
+        .post("/api/funcionarios")
+        .set("Content-Type", "application/json")
+        .send(f);
+
       expect(res.statusCode).toBe(201);
       expect(res.body).toHaveProperty("id");
     }

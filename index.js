@@ -1,11 +1,11 @@
 const express = require("express");
 const sqlite3 = require("sqlite3").verbose();
-const bodyParser = require("body-parser");
 
 const app = express();
-const db = new sqlite3.Database(":memory:"); 
+const db = new sqlite3.Database(":memory:");
 
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS funcionarios (
@@ -41,7 +41,10 @@ app.post("/funcionarios", (req, res) => {
     "INSERT INTO funcionarios (nome, funcao, salario) VALUES (?,?,?)",
     [nome, funcao, salario],
     function (err) {
-      if (err) return res.status(500).send("Erro ao inserir");
+      if (err) {
+        console.error("Erro no insert (form):", err.message);
+        return res.status(500).send("Erro ao inserir");
+      }
       res.redirect("/");
     }
   );
@@ -53,7 +56,10 @@ app.post("/api/funcionarios", (req, res) => {
     "INSERT INTO funcionarios (nome, funcao, salario) VALUES (?,?,?)",
     [nome, funcao, salario],
     function (err) {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) {
+        console.error("Erro no insert (API):", err.message);
+        return res.status(500).json({ error: err.message });
+      }
       res.status(201).json({ id: this.lastID, nome, funcao, salario });
     }
   );
@@ -66,7 +72,7 @@ app.get("/api/funcionarios", (req, res) => {
   });
 });
 
-module.exports = app;
+module.exports = { app, db };
 
 if (require.main === module) {
   const PORT = process.env.PORT || 3000;

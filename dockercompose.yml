@@ -8,8 +8,9 @@ services:
       - .:/app
     depends_on:
       - db
-    networks: 
+    networks:
       - minha_rede
+
   db:
     image: mysql:8
     environment:
@@ -19,5 +20,6 @@ services:
       - "3306:3306"
     networks:
       - minha_rede
-  network: 
-    minha_rede:
+
+networks:
+  minha_rede:
