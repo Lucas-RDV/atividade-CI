@@ -20,7 +20,6 @@ db.serialize(() => {
   )`);
 });
 
-// Página HTML simples (cadastro + listagem)
 app.get("/", (req, res) => {
   db.all("SELECT * FROM funcionarios", [], (err, rows) => {
     if (err) return res.status(500).send("Erro no banco");
@@ -40,7 +39,6 @@ app.get("/", (req, res) => {
   });
 });
 
-// Endpoint cadastro
 app.post("/funcionarios", (req, res) => {
   const { nome, funcao, salario } = req.body;
   db.run("INSERT INTO funcionarios (nome, funcao, salario) VALUES (?,?,?)",
@@ -51,7 +49,6 @@ app.post("/funcionarios", (req, res) => {
     });
 });
 
-// Endpoint JSON
 app.get("/api/funcionarios", (req, res) => {
   db.all("SELECT * FROM funcionarios", [], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -64,3 +61,8 @@ app.listen(PORT, () => console.log(`Rodando na porta ${PORT}`));
 
 
 module.exports = app;
+
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => console.log(`Rodando na porta ${PORT}`));
+}
