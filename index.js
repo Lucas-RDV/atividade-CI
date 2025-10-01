@@ -1,16 +1,12 @@
 const express = require("express");
 const sqlite3 = require("sqlite3").verbose();
 const bodyParser = require("body-parser");
-const path = require("path");
 
 const app = express();
-const db = new sqlite3.Database("./funcionarios.db");
+const db = new sqlite3.Database(":memory:"); 
 
-// Middleware
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
 
-// Criação da tabela
 db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS funcionarios (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -41,12 +37,26 @@ app.get("/", (req, res) => {
 
 app.post("/funcionarios", (req, res) => {
   const { nome, funcao, salario } = req.body;
-  db.run("INSERT INTO funcionarios (nome, funcao, salario) VALUES (?,?,?)",
+  db.run(
+    "INSERT INTO funcionarios (nome, funcao, salario) VALUES (?,?,?)",
     [nome, funcao, salario],
     function (err) {
       if (err) return res.status(500).send("Erro ao inserir");
       res.redirect("/");
-    });
+    }
+  );
+});
+
+app.post("/api/funcionarios", (req, res) => {
+  const { nome, funcao, salario } = req.body;
+  db.run(
+    "INSERT INTO funcionarios (nome, funcao, salario) VALUES (?,?,?)",
+    [nome, funcao, salario],
+    function (err) {
+      if (err) return res.status(500).json({ error: err.message });
+      res.status(201).json({ id: this.lastID, nome, funcao, salario });
+    }
+  );
 });
 
 app.get("/api/funcionarios", (req, res) => {
@@ -56,11 +66,7 @@ app.get("/api/funcionarios", (req, res) => {
   });
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Rodando na porta ${PORT}`));
-
-
-module.exports = app;
+module.exports = { app, db };
 
 if (require.main === module) {
   const PORT = process.env.PORT || 3000;
