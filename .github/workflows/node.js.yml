@@ -12,10 +12,33 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+
     - name: Setup Node
       uses: actions/setup-node@v4
       with:
         node-version: 18
-    - run: npm install
-    - run: npm test
-    - run: docker build -t meu-app .
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Run unit tests (no container)
+      run: npm test
+
+    - name: Build Docker image
+      run: docker build -t meu-app .
+
+    - name: Run docker-compose up -d
+      run: docker-compose up -d
+
+    - name: Wait for container to be healthy
+      run: |
+        echo "Aguardando app iniciar..."
+        sleep 10
+        docker ps -a
+
+    - name: Test container endpoint
+      run: |
+        curl --fail http://localhost:3000/api/funcionarios || exit 1
+
+    - name: Shutdown containers
+      run: docker-compose down
