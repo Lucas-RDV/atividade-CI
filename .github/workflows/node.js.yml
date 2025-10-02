@@ -27,8 +27,8 @@ jobs:
     - name: Build Docker image
       run: docker build -t meu-app .
 
-    - name: Run docker-compose up -d
-      run: docker-compose up -d
+    - name: Run docker compose up -d
+      run: docker compose up -d
 
     - name: Wait for container to be healthy
       run: |
@@ -41,4 +41,4 @@ jobs:
         curl --fail http://localhost:3000/api/funcionarios || exit 1
 
     - name: Shutdown containers
-      run: docker-compose down
+      run: docker compose down
