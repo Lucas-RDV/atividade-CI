@@ -1,61 +1,70 @@
-name: Node.js CI + Docker CD
+name: Node.js CI
 
 on:
   push:
-    branches: ["main"]
+    branches: [ "main" ]
   pull_request:
-    branches: ["main"]
-
-env:
-  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/atividade-ci
+    branches: [ "main" ]
 
 jobs:
-  build-test-and-push:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: 18
 
-      - name: Install dependencies
-        run: npm i
+    - name: Install dependencies
+      run: npm install
 
-      - name: Run unit tests (no container)
-        run: npm test
+    - name: Run unit tests (no container)
+      run: npm test
 
-      - name: Build Docker image
-        run: docker build -t meu-app .
+    - name: Build Docker image
+      run: docker build -t meu-app .
 
-      - name: Run container for health check
-        run: |
-          docker run -d --name app -p 3000:3000 meu-app
-          echo "Aguardando app iniciar..."
-          sleep 8
-          curl --fail http://localhost:3000/api/funcionarios || (docker logs app && exit 1)
-          docker logs app
+    - name: Run docker compose up -d
+      run: docker compose up -d
 
-      - name: Stop and remove container
-        if: always()
-        run: |
-          docker stop app || true
-          docker rm app || true
+    - name: Wait for container to be healthy
+      run: |
+        echo "Aguardando app iniciar..."
+        sleep 10
+        docker ps -a
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+    - name: Test container endpoint
+      run: |
+        curl --fail http://localhost:3000/api/funcionarios || exit 1
 
-      - name: Build and Push (Docker Hub)
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./dockerfile 
-          push: true
-          tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/atividade-ci:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/atividade-ci:${{ github.sha }}
+    - name: Shutdown containers
+      run: docker compose down
+
+    - name: Validate Docker Hub secrets
+      run: |
+        if [ -z "${{ secrets.DOCKERHUB_USERNAME }}" ]; then
+          echo "ERROR: Secret DOCKERHUB_USERNAME está vazio"; exit 1; fi
+        if [ -z "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
+          echo "ERROR: Secret DOCKERHUB_TOKEN está vazio"; exit 1; fi
+        echo "IMAGE_NAME=${{ secrets.DOCKERHUB_USERNAME }}/atividade-ci" >> $GITHUB_ENV
+        echo "Usando tag: ${{ secrets.DOCKERHUB_USERNAME }}/atividade-ci"
+
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Build and Push image to Docker Hub
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        file: ./Dockerfile  
+        push: true
+        tags: |
+          ${{ secrets.DOCKERHUB_USERNAME }}/atividade-ci:latest
+          ${{ secrets.DOCKERHUB_USERNAME }}/atividade-ci:${{ github.sha }}
+        
