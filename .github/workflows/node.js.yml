@@ -1,44 +1,61 @@
-name: Node.js CI
+name: Node.js CI + Docker CD
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
+
+env:
+  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/atividade-ci
 
 jobs:
-  build:
+  build-test-and-push:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Setup Node
-      uses: actions/setup-node@v4
-      with:
-        node-version: 18
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
 
-    - name: Install dependencies
-      run: npm install
+      - name: Install dependencies
+        run: npm ci
 
-    - name: Run unit tests (no container)
-      run: npm test
+      - name: Run unit tests (no container)
+        run: npm test
 
-    - name: Build Docker image
-      run: docker build -t meu-app .
+      - name: Build Docker image
+        run: docker build -t meu-app .
 
-    - name: Run docker compose up -d
-      run: docker compose up -d
+      - name: Run container for health check
+        run: |
+          docker run -d --name app -p 3000:3000 meu-app
+          echo "Aguardando app iniciar..."
+          sleep 8
+          curl --fail http://localhost:3000/api/funcionarios || (docker logs app && exit 1)
+          docker logs app
 
-    - name: Wait for container to be healthy
-      run: |
-        echo "Aguardando app iniciar..."
-        sleep 10
-        docker ps -a
+      - name: Stop and remove container
+        if: always()
+        run: |
+          docker stop app || true
+          docker rm app || true
 
-    - name: Test container endpoint
-      run: |
-        curl --fail http://localhost:3000/api/funcionarios || exit 1
+      - name: Tag image for Docker Hub
+        run: |
+          docker tag meu-app $IMAGE_NAME:latest
+          docker tag meu-app $IMAGE_NAME:${{ github.sha }}
 
-    - name: Shutdown containers
-      run: docker compose down
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Push image to Docker Hub
+        run: |
+          docker push $IMAGE_NAME:latest
+          docker push $IMAGE_NAME:${{ github.sha }}
